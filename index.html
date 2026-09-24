@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Piperack Pedestal Foundation Design</title>
+  <style>
+    :root {
+      --primary: #1e5f8a;
+      --primary-light: #e8f0f6;
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --muted: #656d76;
+      --success: #1a7f37;
+      --danger: #cf222e;
+      --warning: #9a6700;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 0 0 40px;
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    header p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 12px 20px 0;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      border: none;
+      background: transparent;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 6px 6px 0 0;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .section h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      background: #fff;
+    }
+    input:focus, select:focus {
+      outline: 2px solid var(--primary);
+      border-color: var(--primary);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: var(--primary-light);
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--primary);
+    }
+    td input {
+      padding: 6px 8px;
+      font-size: 0.9rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover { background: #164d70; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-danger {
+      background: #fff;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+    }
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .metric {
+      background: var(--primary-light);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+    .metric .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .metric .label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .status.ok { background: #dafbe1; color: var(--success); }
+    .status.ng { background: #ffebe9; color: var(--danger); }
+    .note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .result-table td:last-child { font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 24px 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      th, td { padding: 6px 4px; font-size: 0.82rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Piperack Pedestal Foundation Design</h1>
+    <p>Isolated pedestal footing under biaxial eccentric load — matching AD204-601-G-03378 methodology (ACI 318 style). Every change recalculates live.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="geometry">Geometry</button>
+    <button class="tab-btn" data-tab="loadcases">Load cases</button>
+    <button class="tab-btn" data-tab="combinations">Combinations</button>
+    <button class="tab-btn" data-tab="results">Results</button>
+  </div>
+
+  <div class="container">
+    <!-- ==================== GEOMETRY ==================== -->
+    <div id="geometry" class="panel active">
+      <div class="section">
+        <h2>Footing & Soil</h2>
+        <div class="grid">
+          <div><label>Lx — footing length X (m)</label><input type="number" id="Lx" value="3.5" step="0.1" min="0.5"></div>
+          <div><label>Ly — footing width Y (m)</label><input type="number" id="Ly" value="3.5" step="0.1" min="0.5"></div>
+          <div><label>Hf — footing thickness (m)</label><input type="number" id="Hf" value="0.40" step="0.05" min="0.2"></div>
+          <div><label>Hs — soil above footing (m)</label><input type="number" id="Hs" value="1.60" step="0.1" min="0"></div>
+          <div><label>Allow. bearing capacity (kPa)</label><input type="number" id="qAll" value="250" step="10"></div>
+          <div><label>Unit wt. soil (kN/m³)</label><input type="number" id="gs" value="18" step="0.5"></div>
+          <div><label>Unit wt. concrete (kN/m³)</label><input type="number" id="gc" value="24" step="0.5"></div>
+          <div><label>Friction coefficient μ</label><input type="number" id="mu" value="0.30" step="0.05" min="0.1" max="0.6"></div>
+          <div><label>S.F. overturning</label><input type="number" id="FSot" value="1.5" step="0.1"></div>
+          <div><label>S.F. sliding</label><input type="number" id="FSsl" value="1.5" step="0.1"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Pedestal (Column)</h2>
+        <div class="grid">
+          <div><label>dx — pedestal width X (mm)</label><input type="number" id="dx" value="850" step="50"></div>
+          <div><label>dy — pedestal width Y (mm)</label><input type="number" id="dy" value="1100" step="50"></div>
+          <div><label>Hp — pedestal height (m)</label><input type="number" id="Hp" value="1.90" step="0.1"></div>
+          <div><label>ex — offset from center (mm)</label><input type="number" id="ex" value="0" step="10"></div>
+          <div><label>ey — offset from center (mm)</label><input type="number" id="ey" value="0" step="10"></div>
+        </div>
+        <p class="note">Single centered pedestal is fully supported. Offset (ex, ey) handles one off-center pedestal.</p>
+      </div>
+
+      <div class="section">
+        <h2>Concrete & Reinforcement</h2>
+        <div class="grid">
+          <div><label>f'c (MPa)</label><input type="number" id="fc" value="35" step="5"></div>
+          <div><label>fy (MPa)</label><input type="number" id="fy" value="420" step="20"></div>
+          <div><label>Cover — footing (mm)</label><input type="number" id="coverF" value="75" step="5"></div>
+          <div><label>Cover — pedestal (mm)</label><input type="number" id="coverP" value="75" step="5"></div>
+          <div><label>Main bar dia. footing (mm)</label>
+            <select id="barDia">
+              <option value="16">16</option>
+              <option value="20">20</option>
+              <option value="25" selected>25</option>
+              <option value="32">32</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== LOAD CASES ==================== -->
+    <div id="loadcases" class="panel">
+      <div class="section">
+        <h2>Primary Load Cases</h2>
+        <p class="note" style="margin-bottom:12px">Reactions at the top of the pedestal from structural analysis. Positive Fz = downward. Add one row per primary case.</p>
+        <div style="overflow-x:auto">
+          <table id="lcTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Fx (kN)</th>
+                <th>Fy (kN)</th>
+                <th>Fz (kN)</th>
+                <th>Mx (kN·m)</th>
+                <th>My (kN·m)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lcBody"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addLoadCase()">+ Add load case</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== COMBINATIONS ==================== -->
+    <div id="combinations" class="panel">
+      <div class="section">
+        <h2>Load Combinations</h2>
+        <p class="note" style="margin-bottom:12px">
+          Type decides which checks it feeds: <strong>elastic</strong> → soil bearing, stability; <strong>ultimate</strong> → strength design.
+          “Soil & Fdn factor” multiplies self-weight of footing + soil + pedestal.
+        </p>
+        <div style="overflow-x:auto">
+          <table id="combTable">
+            <thead>
+              <tr>
+                <th>LC#</th>
+                <th>Type</th>
+                <th>Soil&Fdn factor</th>
+                <th>Factors for primary cases (space-separated or leave blank)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="combBody"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addCombination()">+ Add combination</button>
+        </div>
+        <p class="note" style="margin-top:12px">
+          Example factors string: for 3 load cases you can write “1.0 0 0.5” meaning 1.0×LC1 + 0×LC2 + 0.5×LC3.
+          Leave blank to use only the first load case with factor 1.0 (quick test mode).
+        </p>
+      </div>
+    </div>
+
+    <!-- ==================== RESULTS ==================== -->
+    <div id="results" class="panel">
+      <div class="section">
+        <h2>Self-Weight Summary</h2>
+        <div class="metric-grid" id="weightMetrics"></div>
+      </div>
+
+      <div class="section">
+        <h2>Stability Checks (Elastic Combinations)</h2>
+        <div style="overflow-x:auto">
+          <table class="result-table" id="stabilityTable">
+            <thead>
+              <tr>
+                <th>LC#</th>
+                <th>ΣFz (kN)</th>
+                <th>ex (m)</th>
+                <th>ey (m)</th>
+                <th>σmax (kPa)</th>
+                <th>σmin (kPa)</th>
+                <th>FS OT</th>
+                <th>FS SL</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="stabilityBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Design Summary (Ultimate Combinations) – Simplified</h2>
+        <div class="metric-grid" id="designMetrics"></div>
+        <p class="note" style="margin-top:12px">
+          Design moments are approximate (uniform pressure × projection). Full punching/one-way shear and exact bar detailing are not included in this prototype.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Prototype for educational use · Methodology inspired by AD204-601-G-03378 · Always verify with a licensed engineer
+  </footer>
+
+  <script>
+    // ---------- Defaults matching the calculation note ----------
+    const defaultLoadCases = [
+      { name: "DS+DE", Fx: 0, Fy: 0, Fz: 80, Mx: 0, My: 0 },
+      { name: "WX+", Fx: 12, Fy: 0, Fz: 0, Mx: 0, My: 25 },
+      { name: "WX-", Fx: -12, Fy: 0, Fz: 0, Mx: 0, My: -25 },
+      { name: "WZ+", Fx: 0, Fy: 15, Fz: 0, Mx: 30, My: 0 },
+      { name: "WZ-", Fx: 0, Fy: -15, Fz: 0, Mx: -30, My: 0 },
+      { name: "Operating", Fx: 5, Fy: -8, Fz: 135, Mx: -45, My: 20 }
+    ];
+
+    const defaultCombinations = [
+      { id: "101", type: "elastic", soilFactor: 0.6, factors: "1 0 0 0 0 0" },
+      { id: "105", type: "elastic", soilFactor: 1.0, factors: "0 0 0 0 0 1" },
+      { id: "107", type: "elastic", soilFactor: 1.0, factors: "0 1 0 0 0 1" },
+      { id: "301", type: "ultimate", soilFactor: 0.9, factors: "1 0 0 0 0 0" },
+      { id: "305", type: "ultimate", soilFactor: 1.2, factors: "0 0 0 0 0 1" },
+      { id: "307", type: "ultimate", soilFactor: 1.2, factors: "0 1 0 0 0 1" }
+    ];
+
+    let loadCases = JSON.parse(JSON.stringify(defaultLoadCases));
+    let combinations = JSON.parse(JSON.stringify(defaultCombinations));
+
+    // ---------- Tab switching ----------
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'results') calculate();
+      });
+    });
+
+    // ---------- Load case table ----------
+    function renderLoadCases() {
+      const tbody = document.getElementById('lcBody');
+      tbody.innerHTML = '';
+      loadCases.forEach((lc, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input value="${lc.name}" onchange="loadCases[${i}].name=this.value"></td>
+          <td><input type="number" value="${lc.Fx}" step="0.1" onchange="loadCases[${i}].Fx=+this.value"></td>
+          <td><input type="number" value="${lc.Fy}" step="0.1" onchange="loadCases[${i}].Fy=+this.value"></td>
+          <td><input type="number" value="${lc.Fz}" step="0.1" onchange="loadCases[${i}].Fz=+this.value"></td>
+          <td><input type="number" value="${lc.Mx}" step="0.1" onchange="loadCases[${i}].Mx=+this.value"></td>
+          <td><input type="number" value="${lc.My}" step="0.1" onchange="loadCases[${i}].My=+this.value"></td>
+          <td><button class="btn btn-danger" onclick="removeLoadCase(${i})">×</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function addLoadCase() {
+      loadCases.push({ name: `LC${loadCases.length+1}`, Fx: 0, Fy: 0, Fz: 0, Mx: 0, My: 0 });
+      renderLoadCases();
+    }
+
+    function removeLoadCase(i) {
+      if (loadCases.length <= 1) return alert('Keep at least one load case');
+      loadCases.splice(i, 1);
+      renderLoadCases();
+    }
+
+    // ---------- Combinations table ----------
+    function renderCombinations() {
+      const tbody = document.getElementById('combBody');
+      tbody.innerHTML = '';
+      combinations.forEach((c, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input value="${c.id}" onchange="combinations[${i}].id=this.value" style="width:70px"></td>
+          <td>
+            <select onchange="combinations[${i}].type=this.value">
+              <option value="elastic" ${c.type==='elastic'?'selected':''}>elastic</option>
+              <option value="ultimate" ${c.type==='ultimate'?'selected':''}>ultimate</option>
+            </select>
+          </td>
+          <td><input type="number" value="${c.soilFactor}" step="0.1" onchange="combinations[${i}].soilFactor=+this.value" style="width:80px"></td>
+          <td><input value="${c.factors}" onchange="combinations[${i}].factors=this.value" placeholder="e.g. 1.0 0 0.5"></td>
+          <td><button class="btn btn-danger" onclick="removeCombination(${i})">×</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function addCombination() {
+      combinations.push({ id: String(100 + combinations.length), type: 'elastic', soilFactor: 1.0, factors: '' });
+      renderCombinations();
+    }
+
+    function removeCombination(i) {
+      if (combinations.length <= 1) return alert('Keep at least one combination');
+      combinations.splice(i, 1);
+      renderCombinations();
+    }
+
+    // ---------- Helpers ----------
+    function val(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+    function parseFactors(str, n) {
+      if (!str || !str.trim()) {
+        const f = new Array(n).fill(0);
+        f[0] = 1;
+        return f;
+      }
+      const parts = str.trim().split(/\s+/).map(Number);
+      while (parts.length < n) parts.push(0);
+      return parts.slice(0, n);
+    }
+
+    // ---------- Main calculation ----------
+    function calculate() {
+      const Lx = val('Lx'), Ly = val('Ly'), Hf = val('Hf'), Hs = val('Hs');
+      const qAll = val('qAll'), gs = val('gs'), gc = val('gc'), mu = val('mu');
+      const FSotReq = val('FSot'), FSslReq = val('FSsl');
+      const dx = val('dx') / 1000, dy = val('dy') / 1000, Hp = val('Hp');
+      const fy = val('fy'), coverF = val('coverF') / 1000;
+
+      const A_f = Lx * Ly;
+      const A_p = dx * dy;
+      const A_s = Math.max(A_f - A_p, 0);
+
+      const W_f = A_f * Hf * gc;
+      const W_p = A_p * Hp * gc;
+      const W_s = A_s * Hs * gs;
+      const W_dead = W_f + W_p + W_s;
+
+      // Weight metrics
+      document.getElementById('weightMetrics').innerHTML = `
+        <div class="metric"><div class="value">${W_f.toFixed(1)}</div><div class="label">Footing (kN)</div></div>
+        <div class="metric"><div class="value">${W_p.toFixed(1)}</div><div class="label">Pedestal (kN)</div></div>
+        <div class="metric"><div class="value">${W_s.toFixed(1)}</div><div class="label">Soil (kN)</div></div>
+        <div class="metric"><div class="value">${W_dead.toFixed(1)}</div><div class="label">Total Dead (kN)</div></div>
+      `;
+
+      const n = loadCases.length;
+      let stabilityRows = '';
+      let maxMuX = 0, maxMuY = 0, maxAs = 0;
+
+      combinations.forEach(comb => {
+        const factors = parseFactors(comb.factors, n);
+        let Fx = 0, Fy = 0, Fz = 0, Mx = 0, My = 0;
+        factors.forEach((f, i) => {
+          Fx += f * loadCases[i].Fx;
+          Fy += f * loadCases[i].Fy;
+          Fz += f * loadCases[i].Fz;
+          Mx += f * loadCases[i].Mx;
+          My += f * loadCases[i].My;
+        });
+
+        const Fz_total = Fz + comb.soilFactor * W_dead;
+        const Mx_bot = Mx + Fy * (Hp + Hf);
+        const My_bot = My + Fx * (Hp + Hf);
+
+        const ex = Fz_total !== 0 ? My_bot / Fz_total : 0;
+        const ey = Fz_total !== 0 ? Mx_bot / Fz_total : 0;
+
+        const sigma_avg = Fz_total / A_f;
+        const termX = 6 * Math.abs(ex) / Lx;
+        const termY = 6 * Math.abs(ey) / Ly;
+        const sigma_max = sigma_avg * (1 + termX + termY);
+        const sigma_min = sigma_avg * (1 - termX - termY);
+
+        const MR_x = Fz_total * (Lx / 2);
+        const MR_y = Fz_total * (Ly / 2);
+        const FS_ot = Math.min(
+          Math.abs(My_bot) > 0.01 ? MR_x / Math.abs(My_bot) : 999,
+          Math.abs(Mx_bot) > 0.01 ? MR_y / Math.abs(Mx_bot) : 999
+        );
+
+        const H = Math.sqrt(Fx*Fx + Fy*Fy);
+        const FS_sl = H > 0.01 ? (mu * Fz_total) / H : 999;
+
+        if (comb.type === 'elastic') {
+          const ok = sigma_max <= qAll && sigma_min >= -0.1 && FS_ot >= FSotReq && FS_sl >= FSslReq;
+          stabilityRows += `<tr>
+            <td>${comb.id}</td>
+            <td>${Fz_total.toFixed(1)}</td>
+            <td>${ex.toFixed(3)}</td>
+            <td>${ey.toFixed(3)}</td>
+            <td>${sigma_max.toFixed(1)}</td>
+            <td>${sigma_min.toFixed(1)}</td>
+            <td>${FS_ot > 100 ? '∞' : FS_ot.toFixed(2)}</td>
+            <td>${FS_sl > 100 ? '∞' : FS_sl.toFixed(2)}</td>
+            <td><span class="status ${ok ? 'ok' : 'ng'}">${ok ? 'OK' : 'NG'}</span></td>
+          </tr>`;
+        }
+
+        if (comb.type === 'ultimate') {
+          const projX = (Lx - dx) / 2;
+          const projY = (Ly - dy) / 2;
+          const q_u = Fz_total / A_f;
+          const Mu_x = q_u * Ly * projX * (projX / 2);
+          const Mu_y = q_u * Lx * projY * (projY / 2);
+          maxMuX = Math.max(maxMuX, Mu_x);
+          maxMuY = Math.max(maxMuY, Mu_y);
+
+          const d = Math.max(Hf - coverF - 0.012, 0.05);
+          const As_x = (Mu_x * 1e6) / (0.9 * fy * 0.9 * d * 1000);
+          const As_y = (Mu_y * 1e6) / (0.9 * fy * 0.9 * d * 1000);
+          maxAs = Math.max(maxAs, As_x, As_y);
+        }
+      });
+
+      document.getElementById('stabilityBody').innerHTML = stabilityRows || '<tr><td colspan="9">No elastic combinations defined</td></tr>';
+
+      const As_min = 0.0018 * 1000 * Hf * 1000;
+      document.getElementById('designMetrics').innerHTML = `
+        <div class="metric"><div class="value">${maxMuX.toFixed(1)}</div><div class="label">Max Mu about Y (kN·m)</div></div>
+        <div class="metric"><div class="value">${maxMuY.toFixed(1)}</div><div class="label">Max Mu about X (kN·m)</div></div>
+        <div class="metric"><div class="value">${maxAs.toFixed(0)}</div><div class="label">Max As req. (mm²)</div></div>
+        <div class="metric"><div class="value">${As_min.toFixed(0)}</div><div class="label">As min (mm²/m)</div></div>
+      `;
+    }
+
+    // ---------- Init ----------
+    renderLoadCases();
+    renderCombinations();
+
+    // Recalculate when geometry changes
+    document.querySelectorAll('#geometry input, #geometry select').forEach(el => {
+      el.addEventListener('change', () => {
+        if (document.getElementById('results').classList.contains('active')) calculate();
+      });
+    });
+
+    // First calculation
+    calculate();
+  </script>
+</body>
+</html>
