@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Piperack Pedestal Foundation Design</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e5f8a; --primary-light: #e8f0f6; --bg: #f4f6f8; --card: #fff;
+      --border: #d0d7de; --text: #1f2328; --muted: #656d76; --success: #1a7f37; --danger: #cf222e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; padding-bottom: 60px; }
+    header { background: var(--card); border-bottom: 1px solid var(--border); padding: 14px 18px; position: sticky; top: 0; z-index: 100; }
+    header h1 { font-size: 1.15rem; font-weight: 600; color: var(--primary); }
+    header p { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+    .tabs { display: flex; gap: 2px; padding: 8px 14px 0; background: var(--card); border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tab-btn { padding: 8px 14px; border: none; background: transparent; font-size: 0.85rem; font-weight: 500; color: var(--muted); cursor: pointer; border-radius: 6px 6px 0 0; white-space: nowrap; }
+    .tab-btn.active { background: var(--primary-light); color: var(--primary); border-bottom: 2px solid var(--primary); }
+    .container { max-width: 1140px; margin: 0 auto; padding: 14px 10px; }
+    .panel { display: none; } .panel.active { display: block; }
+    .section { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+    .section h2 { font-size: 0.88rem; font-weight: 600; color: var(--primary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .section h3 { font-size: 0.92rem; font-weight: 600; color: #333; margin: 14px 0 8px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 9px; }
+    label { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; }
+    input, select { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; background: #fff; }
+    input:focus, select:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th, td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+    th { background: var(--primary-light); font-weight: 600; font-size: 0.75rem; color: var(--primary); }
+    td input, td select { padding: 4px 5px; font-size: 0.82rem; }
+    .btn { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .btn-success { background: #1a7f37; color: #fff; }
+    .btn-danger { background: #fff; border: 1px solid var(--danger); color: var(--danger); padding: 2px 8px; font-size: 0.75rem; }
+    .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 9px; }
+    .metric { background: var(--primary-light); border-radius: 8px; padding: 10px; text-align: center; }
+    .metric .value { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+    .metric .label { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .status.ok { background: #dafbe1; color: var(--success); }
+    .status.ng { background: #ffebe9; color: var(--danger); }
+    .note { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+    .report-box { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.78rem; white-space: pre-wrap; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #ddd; max-height: 520px; overflow-y: auto; line-height: 1.45; }
+    .download-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px; background: var(--primary-light); border-radius: 8px; }
+    .detail-block { background: #fafbfc; border: 1px solid #e1e4e8; border-radius: 6px; padding: 10px 12px; margin: 8px 0; font-size: 0.82rem; }
+    .detail-block strong { color: var(--primary); }
+    footer { text-align: center; padding: 18px 10px; font-size: 0.75rem; color: var(--muted); }
+    .scroll-x { overflow-x: auto; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } th, td { padding: 4px 2px; font-size: 0.75rem; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Piperack Pedestal Foundation Design</h1>
+    <p>Isolated pedestal footing under biaxial eccentric load — matching AD204-601-G-03378 (ACI 318 / IBC style)</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="geometry">Geometry</button>
+    <button class="tab-btn" data-tab="loadcases">Load cases</button>
+    <button class="tab-btn" data-tab="combinations">Combinations</button>
+    <button class="tab-btn" data-tab="results">Results & Report</button>
+  </div>
+
+  <div class="container">
+    <!-- GEOMETRY -->
+    <div id="geometry" class="panel active">
+      <div class="section">
+        <h2>Footing & Soil</h2>
+        <div class="grid">
+          <div><label>Lx — footing X (m)</label><input type="number" id="Lx" value="3.50" step="0.1" min="0.5"></div>
+          <div><label>Ly — footing Y (m)</label><input type="number" id="Ly" value="3.50" step="0.1" min="0.5"></div>
+          <div><label>Hf — thickness (m)</label><input type="number" id="Hf" value="0.40" step="0.05" min="0.2"></div>
+          <div><label>Hs — soil above (m)</label><input type="number" id="Hs" value="1.60" step="0.1" min="0"></div>
+          <div><label>Allow. bearing (kPa)</label><input type="number" id="qAll" value="250" step="10"></div>
+          <div><label>γ soil (kN/m³)</label><input type="number" id="gs" value="18" step="0.5"></div>
+          <div><label>γ concrete (kN/m³)</label><input type="number" id="gc" value="24" step="0.5"></div>
+          <div><label>Friction μ</label><input type="number" id="mu" value="0.30" step="0.05" min="0.1" max="0.6"></div>
+          <div><label>FS Overturning</label><input type="number" id="FSot" value="1.50" step="0.1"></div>
+          <div><label>FS Sliding</label><input type="number" id="FSsl" value="1.50" step="0.1"></div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Pedestal (Column)</h2>
+        <div class="grid">
+          <div><label>dx (mm)</label><input type="number" id="dx" value="850" step="50"></div>
+          <div><label>dy (mm)</label><input type="number" id="dy" value="1100" step="50"></div>
+          <div><label>Hp (m)</label><input type="number" id="Hp" value="1.90" step="0.1"></div>
+          <div><label>ex offset (mm)</label><input type="number" id="ex" value="0" step="10"></div>
+          <div><label>ey offset (mm)</label><input type="number" id="ey" value="0" step="10"></div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Concrete & Reinforcement</h2>
+        <div class="grid">
+          <div><label>f'c (MPa)</label><input type="number" id="fc" value="35" step="5"></div>
+          <div><label>fy (MPa)</label><input type="number" id="fy" value="420" step="20"></div>
+          <div><label>Cover footing (mm)</label><input type="number" id="coverF" value="75" step="5"></div>
+          <div><label>Cover pedestal (mm)</label><input type="number" id="coverP" value="75" step="5"></div>
+          <div><label>Main bar dia (mm)</label>
+            <select id="barDia"><option>16</option><option>20</option><option selected>25</option><option>32</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOAD CASES -->
+    <div id="loadcases" class="panel">
+      <div class="section">
+        <h2>Primary Load Cases (Reactions at top of pedestal)</h2>
+        <p class="note" style="margin-bottom:8px">Positive Fz = downward. These are the primary cases from structural analysis. Factors for each will be entered in the Combinations tab.</p>
+        <div class="scroll-x">
+          <table>
+            <thead><tr><th>Name</th><th>Fx (kN)</th><th>Fy (kN)</th><th>Fz (kN)</th><th>Mx (kN·m)</th><th>My (kN·m)</th><th></th></tr></thead>
+            <tbody id="lcBody"></tbody>
+          </table>
+        </div>
+        <div class="actions"><button class="btn btn-primary" onclick="addLoadCase()">+ Add load case</button></div>
+      </div>
+    </div>
+
+    <!-- COMBINATIONS – matrix style -->
+    <div id="combinations" class="panel">
+      <div class="section">
+        <h2>Load Combinations</h2>
+        <p class="note" style="margin-bottom:8px">
+          For each combination enter a factor for <strong>every</strong> primary load case.<br>
+          Type <strong>elastic</strong> = service (bearing + stability). Type <strong>ultimate</strong> = strength design.<br>
+          Soil&amp;Fdn factor multiplies self-weight of footing + soil + pedestal.
+        </p>
+        <div class="scroll-x" id="combMatrixWrap"></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="addCombination()">+ Add combination</button>
+          <button class="btn btn-outline" onclick="loadDefaultCombinations()">Load typical defaults</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="results" class="panel">
+      <div class="download-bar">
+        <button class="btn btn-success" onclick="downloadPDF()">Download PDF Report</button>
+        <button class="btn btn-primary" onclick="downloadExcel()">Download Excel</button>
+        <button class="btn btn-outline" onclick="calculate()">Recalculate</button>
+      </div>
+
+      <div class="section">
+        <h2>1. Foundation Diagrams</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;">
+          <div>
+            <p style="text-align:center;font-weight:600;margin-bottom:4px;font-size:0.85rem;">PLAN VIEW</p>
+            <svg id="planSvg" width="300" height="260" style="border:1px solid #ccc;background:#fafafa;"></svg>
+          </div>
+          <div>
+            <p style="text-align:center;font-weight:600;margin-bottom:4px;font-size:0.85rem;">SECTION VIEW</p>
+            <svg id="sectionSvg" width="300" height="260" style="border:1px solid #ccc;background:#fafafa;"></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>2. Self-Weight</h2>
+        <div class="metric-grid" id="weightMetrics"></div>
+      </div>
+
+      <div class="section">
+        <h2>3. Stability Checks (Elastic Combinations)</h2>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>LC#</th><th>Description</th><th>ΣFz (kN)</th><th>ex (m)</th><th>ey (m)</th><th>σmax (kPa)</th><th>σmin (kPa)</th><th>FS OT</th><th>FS SL</th><th>Status</th></tr>
+            </thead>
+            <tbody id="stabilityBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>4. Design Summary (Ultimate)</h2>
+        <div class="metric-grid" id="designMetrics"></div>
+      </div>
+
+      <div class="section">
+        <h2>5. Detailed Calculation Note</h2>
+        <div class="report-box" id="reportText"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Educational prototype matching AD204-601-G-03378 methodology · Always verify with a licensed structural engineer</footer>
+
+  <script>
+    // ===================== DEFAULT DATA =====================
+    const defaultLoadCases = [
+      { name: "DS+DE", Fx: 0, Fy: 0, Fz: 80, Mx: 0, My: 0 },
+      { name: "WX+", Fx: 12, Fy: 0, Fz: 0, Mx: 0, My: 25 },
+      { name: "WX-", Fx: -12, Fy: 0, Fz: 0, Mx: 0, My: -25 },
+      { name: "WZ+", Fx: 0, Fy: 15, Fz: 0, Mx: 30, My: 0 },
+      { name: "WZ-", Fx: 0, Fy: -15, Fz: 0, Mx: -30, My: 0 },
+      { name: "Operating", Fx: 5, Fy: -8, Fz: 135, Mx: -45, My: 20 }
+    ];
+
+    // factors array length must match number of load cases
+    const defaultCombinations = [
+      { id: "101", desc: "Empty + Wind X", type: "elastic", soilFactor: 0.6, factors: [1, 1, 0, 0, 0, 0] },
+      { id: "102", desc: "Empty + Wind -X", type: "elastic", soilFactor: 0.6, factors: [1, 0, 1, 0, 0, 0] },
+      { id: "105", desc: "Operating", type: "elastic", soilFactor: 1.0, factors: [0, 0, 0, 0, 0, 1] },
+      { id: "107", desc: "Oper + Wind X", type: "elastic", soilFactor: 1.0, factors: [0, 1, 0, 0, 0, 1] },
+      { id: "109", desc: "Oper + Wind Z", type: "elastic", soilFactor: 1.0, factors: [0, 0, 0, 1, 0, 1] },
+      { id: "301", desc: "Empty + Wind X (U)", type: "ultimate", soilFactor: 0.9, factors: [1, 1.6, 0, 0, 0, 0] },
+      { id: "305", desc: "Operating (U)", type: "ultimate", soilFactor: 1.2, factors: [0, 0, 0, 0, 0, 1.2] },
+      { id: "307", desc: "Oper + Wind X (U)", type: "ultimate", soilFactor: 1.2, factors: [0, 1.6, 0, 0, 0, 1.2] }
+    ];
+
+    let loadCases = JSON.parse(JSON.stringify(defaultLoadCases));
+    let combinations = JSON.parse(JSON.stringify(defaultCombinations));
+    let lastResults = null;
+
+    // ===================== TABS =====================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'combinations') renderCombinations();
+        if (btn.dataset.tab === 'results') calculate();
+      });
+    });
+
+    // ===================== LOAD CASES =====================
+    function renderLoadCases() {
+      const tbody = document.getElementById('lcBody');
+      tbody.innerHTML = '';
+      loadCases.forEach((lc, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input value="${lc.name}" onchange="loadCases[${i}].name=this.value; renderCombinations();"></td>
+          <td><input type="number" value="${lc.Fx}" step="0.1" onchange="loadCases[${i}].Fx=+this.value"></td>
+          <td><input type="number" value="${lc.Fy}" step="0.1" onchange="loadCases[${i}].Fy=+this.value"></td>
+          <td><input type="number" value="${lc.Fz}" step="0.1" onchange="loadCases[${i}].Fz=+this.value"></td>
+          <td><input type="number" value="${lc.Mx}" step="0.1" onchange="loadCases[${i}].Mx=+this.value"></td>
+          <td><input type="number" value="${lc.My}" step="0.1" onchange="loadCases[${i}].My=+this.value"></td>
+          <td><button class="btn btn-danger" onclick="removeLoadCase(${i})">×</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function addLoadCase() {
+      loadCases.push({ name: `LC${loadCases.length+1}`, Fx:0, Fy:0, Fz:0, Mx:0, My:0 });
+      combinations.forEach(c => { while (c.factors.length < loadCases.length) c.factors.push(0); });
+      renderLoadCases(); renderCombinations();
+    }
+    function removeLoadCase(i) {
+      if (loadCases.length <= 1) return alert('Keep at least one load case');
+      loadCases.splice(i, 1);
+      combinations.forEach(c => c.factors.splice(i, 1));
+      renderLoadCases(); renderCombinations();
+    }
+
+    // ===================== COMBINATIONS MATRIX =====================
+    function renderCombinations() {
+      const wrap = document.getElementById('combMatrixWrap');
+      let html = '<table><thead><tr><th>LC#</th><th>Description</th><th>Type</th><th>Soil&amp;Fdn</th>';
+      loadCases.forEach(lc => { html += `<th>${lc.name}</th>`; });
+      html += '<th></th></tr></thead><tbody>';
+
+      combinations.forEach((c, i) => {
+        // ensure factors array length matches
+        while (c.factors.length < loadCases.length) c.factors.push(0);
+        c.factors = c.factors.slice(0, loadCases.length);
+
+        html += `<tr>
+          <td><input value="${c.id}" style="width:55px" onchange="combinations[${i}].id=this.value"></td>
+          <td><input value="${c.desc||''}" style="min-width:110px" onchange="combinations[${i}].desc=this.value"></td>
+          <td>
+            <select onchange="combinations[${i}].type=this.value">
+              <option value="elastic" ${c.type==='elastic'?'selected':''}>elastic</option>
+              <option value="ultimate" ${c.type==='ultimate'?'selected':''}>ultimate</option>
+            </select>
+          </td>
+          <td><input type="number" value="${c.soilFactor}" step="0.1" style="width:60px" onchange="combinations[${i}].soilFactor=+this.value"></td>`;
+        c.factors.forEach((f, j) => {
+          html += `<td><input type="number" value="${f}" step="0.1" style="width:55px" onchange="combinations[${i}].factors[${j}]=+this.value"></td>`;
+        });
+        html += `<td><button class="btn btn-danger" onclick="removeCombination(${i})">×</button></td></tr>`;
+      });
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    }
+    function addCombination() {
+      const factors = loadCases.map(() => 0);
+      combinations.push({ id: String(100 + combinations.length), desc: '', type: 'elastic', soilFactor: 1.0, factors });
+      renderCombinations();
+    }
+    function removeCombination(i) {
+      if (combinations.length <= 1) return alert('Keep at least one combination');
+      combinations.splice(i, 1); renderCombinations();
+    }
+    function loadDefaultCombinations() {
+      combinations = JSON.parse(JSON.stringify(defaultCombinations));
+      // pad/trim factors to current loadCases length
+      combinations.forEach(c => {
+        while (c.factors.length < loadCases.length) c.factors.push(0);
+        c.factors = c.factors.slice(0, loadCases.length);
+      });
+      renderCombinations();
+    }
+
+    // ===================== HELPERS =====================
+    function val(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+    // ===================== MAIN CALCULATION =====================
+    function calculate() {
+      const Lx = val('Lx'), Ly = val('Ly'), Hf = val('Hf'), Hs = val('Hs');
+      const qAll = val('qAll'), gs = val('gs'), gc = val('gc'), mu = val('mu');
+      const FSotReq = val('FSot'), FSslReq = val('FSsl');
+      const dx = val('dx')/1000, dy = val('dy')/1000, Hp = val('Hp');
+      const fy = val('fy'), coverF = val('coverF')/1000, fc = val('fc');
+
+      const A_f = Lx * Ly, A_p = dx * dy, A_s = Math.max(A_f - A_p, 0);
+      const W_f = A_f * Hf * gc, W_p = A_p * Hp * gc, W_s = A_s * Hs * gs, W_dead = W_f + W_p + W_s;
+
+      document.getElementById('weightMetrics').innerHTML = `
+        <div class="metric"><div class="value">${W_f.toFixed(1)}</div><div class="label">Footing (kN)</div></div>
+        <div class="metric"><div class="value">${W_p.toFixed(1)}</div><div class="label">Pedestal (kN)</div></div>
+        <div class="metric"><div class="value">${W_s.toFixed(1)}</div><div class="label">Soil (kN)</div></div>
+        <div class="metric"><div class="value">${W_dead.toFixed(1)}</div><div class="label">Total Dead (kN)</div></div>`;
+
+      let stabilityRows = '', stabilityData = [], designData = [];
+      let maxMuX = 0, maxMuY = 0, maxAs = 0;
+      const detailedBlocks = [];
+
+      combinations.forEach(comb => {
+        const factors = comb.factors.slice();
+        while (factors.length < loadCases.length) factors.push(0);
+
+        let Fx=0, Fy=0, Fz=0, Mx=0, My=0;
+        factors.forEach((f, i) => {
+          Fx += f * loadCases[i].Fx;
+          Fy += f * loadCases[i].Fy;
+          Fz += f * loadCases[i].Fz;
+          Mx += f * loadCases[i].Mx;
+          My += f * loadCases[i].My;
+        });
+
+        const Fz_total = Fz + comb.soilFactor * W_dead;
+        const Mx_bot = Mx + Fy * (Hp + Hf);
+        const My_bot = My + Fx * (Hp + Hf);
+        const ex = Fz_total !== 0 ? My_bot / Fz_total : 0;
+        const ey = Fz_total !== 0 ? Mx_bot / Fz_total : 0;
+        const sigma_avg = Fz_total / A_f;
+        const termX = 6 * Math.abs(ex) / Lx;
+        const termY = 6 * Math.abs(ey) / Ly;
+        const sigma_max = sigma_avg * (1 + termX + termY);
+        const sigma_min = sigma_avg * (1 - termX - termY);
+        const MR_x = Fz_total * (Lx / 2);
+        const MR_y = Fz_total * (Ly / 2);
+        const FS_ot = Math.min(
+          Math.abs(My_bot) > 0.01 ? MR_x / Math.abs(My_bot) : 999,
+          Math.abs(Mx_bot) > 0.01 ? MR_y / Math.abs(Mx_bot) : 999
+        );
+        const H = Math.sqrt(Fx*Fx + Fy*Fy);
+        const FS_sl = H > 0.01 ? (mu * Fz_total) / H : 999;
+
+        // factor breakdown string
+        let factorStr = factors.map((f,i) => f !== 0 ? `${f}×${loadCases[i].name}` : null).filter(Boolean).join(' + ') || '0';
+
+        if (comb.type === 'elastic') {
+          const ok = sigma_max <= qAll && sigma_min >= -0.5 && FS_ot >= FSotReq && FS_sl >= FSslReq;
+          stabilityRows += `<tr>
+            <td>${comb.id}</td><td>${comb.desc||''}</td><td>${Fz_total.toFixed(1)}</td>
+            <td>${ex.toFixed(3)}</td><td>${ey.toFixed(3)}</td>
+            <td>${sigma_max.toFixed(1)}</td><td>${sigma_min.toFixed(1)}</td>
+            <td>${FS_ot>100?'∞':FS_ot.toFixed(2)}</td>
+            <td>${FS_sl>100?'∞':FS_sl.toFixed(2)}</td>
+            <td><span class="status ${ok?'ok':'ng'}">${ok?'OK':'NG'}</span></td></tr>`;
+          stabilityData.push({ id: comb.id, desc: comb.desc||'', Fz: Fz_total, ex, ey, smax: sigma_max, smin: sigma_min, FSot: FS_ot, FSsl: FS_sl, ok, factorStr, Mx_bot, My_bot, H });
+        }
+
+        if (comb.type === 'ultimate') {
+          const projX = (Lx - dx)/2, projY = (Ly - dy)/2;
+          const q_u = Fz_total / A_f;
+          const Mu_x = q_u * Ly * projX * (projX/2);
+          const Mu_y = q_u * Lx * projY * (projY/2);
+          maxMuX = Math.max(maxMuX, Mu_x);
+          maxMuY = Math.max(maxMuY, Mu_y);
+          const d = Math.max(Hf - coverF - 0.012, 0.05);
+          const As_x = (Mu_x * 1e6) / (0.9 * fy * 0.9 * d * 1000);
+          const As_y = (Mu_y * 1e6) / (0.9 * fy * 0.9 * d * 1000);
+          maxAs = Math.max(maxAs, As_x, As_y);
+          designData.push({ id: comb.id, desc: comb.desc||'', Fz: Fz_total, Mu_x, Mu_y, As_x, As_y, d, factorStr });
+        }
+      });
+
+      document.getElementById('stabilityBody').innerHTML = stabilityRows || '<tr><td colspan="10">No elastic combinations defined</td></tr>';
+      const As_min = 0.0018 * 1000 * Hf * 1000;
+      document.getElementById('designMetrics').innerHTML = `
+        <div class="metric"><div class="value">${maxMuX.toFixed(1)}</div><div class="label">Max Mu about Y (kN·m)</div></div>
+        <div class="metric"><div class="value">${maxMuY.toFixed(1)}</div><div class="label">Max Mu about X (kN·m)</div></div>
+        <div class="metric"><div class="value">${maxAs.toFixed(0)}</div><div class="label">Max As req (mm²)</div></div>
+        <div class="metric"><div class="value">${As_min.toFixed(0)}</div><div class="label">As min (mm²/m)</div></div>`;
+
+      drawPlan(Lx, Ly, dx, dy);
+      drawSection(Lx, Hf, Hp, Hs, dx);
+
+      // ========== ELABORATE REPORT ==========
+      let report = `================================================================
+  CALCULATION NOTE FOR MODULARIZED PIPERACK FOUNDATION
+  (IN-PLACE ANALYSIS)
+================================================================
+Document style reference : AD204-601-G-03378 (SARB Field Development)
+Design basis             : ACI 318 / IBC 2009 / ASCE 7-05 load combinations
+Date generated           : ${new Date().toISOString().slice(0,10)}
+
+----------------------------------------------------------------
+1.0  PROJECT / GEOMETRY DATA
+----------------------------------------------------------------
+  Footing length Lx              = ${Lx.toFixed(2)} m
+  Footing width  Ly              = ${Ly.toFixed(2)} m
+  Footing thickness Hf           = ${Hf.toFixed(2)} m
+  Pedestal size dx × dy          = ${(dx*1000).toFixed(0)} × ${(dy*1000).toFixed(0)} mm
+  Pedestal height Hp             = ${Hp.toFixed(2)} m
+  Soil height above footing Hs   = ${Hs.toFixed(2)} m
+  Allowable soil bearing q_all   = ${qAll.toFixed(0)} kPa
+  Concrete unit weight γc        = ${gc.toFixed(1)} kN/m³
+  Soil unit weight γs            = ${gs.toFixed(1)} kN/m³
+  Friction coefficient μ         = ${mu.toFixed(2)}
+  Required FS Overturning        = ${FSotReq.toFixed(2)}
+  Required FS Sliding            = ${FSslReq.toFixed(2)}
+
+----------------------------------------------------------------
+2.0  MATERIALS
+----------------------------------------------------------------
+  Concrete compressive strength f'c = ${fc} MPa
+  Reinforcement yield strength fy   = ${fy} MPa
+  Cover to reinforcement (footing)  = ${(coverF*1000).toFixed(0)} mm
+  Cover to reinforcement (pedestal) = ${val('coverP')} mm
+  Main bar diameter (assumed)       = ${document.getElementById('barDia').value} mm
+
+----------------------------------------------------------------
+3.0  SELF-WEIGHT CALCULATION
+----------------------------------------------------------------
+  Area of footing Af = Lx × Ly = ${Lx.toFixed(2)} × ${Ly.toFixed(2)} = ${A_f.toFixed(3)} m²
+  Area of pedestal Ap = dx × dy = ${dx.toFixed(3)} × ${dy.toFixed(3)} = ${A_p.toFixed(3)} m²
+  Area of soil As = Af − Ap = ${A_s.toFixed(3)} m²
+
+  Weight of footing  Wf = Af × Hf × γc = ${A_f.toFixed(3)} × ${Hf.toFixed(2)} × ${gc} = ${W_f.toFixed(1)} kN
+  Weight of pedestal Wp = Ap × Hp × γc = ${A_p.toFixed(3)} × ${Hp.toFixed(2)} × ${gc} = ${W_p.toFixed(1)} kN
+  Weight of soil     Ws = As × Hs × γs = ${A_s.toFixed(3)} × ${Hs.toFixed(2)} × ${gs} = ${W_s.toFixed(1)} kN
+  ----------------------------------------------------------
+  TOTAL DEAD LOAD Wd = Wf + Wp + Ws = ${W_dead.toFixed(1)} kN
+
+----------------------------------------------------------------
+4.0  PRIMARY LOAD CASES (at top of pedestal)
+----------------------------------------------------------------
+`;
+      loadCases.forEach((lc, i) => {
+        report += `  [${i+1}] ${lc.name.padEnd(12)}  Fx=${String(lc.Fx).padStart(7)} kN  Fy=${String(lc.Fy).padStart(7)} kN  Fz=${String(lc.Fz).padStart(7)} kN  Mx=${String(lc.Mx).padStart(7)} kN·m  My=${String(lc.My).padStart(7)} kN·m\n`;
+      });
+
+      report += `
+----------------------------------------------------------------
+5.0  LOAD COMBINATIONS
+----------------------------------------------------------------
+`;
+      combinations.forEach(c => {
+        const fstr = c.factors.map((f,i) => f !== 0 ? `${f}×${loadCases[i].name}` : null).filter(Boolean).join(' + ') || '0';
+        report += `  LC ${c.id}  [${c.type}]  Soil&Fdn factor = ${c.soilFactor}
+       ${c.desc || ''}
+       Factors: ${fstr}
+`;
+      });
+
+      report += `
+----------------------------------------------------------------
+6.0  STABILITY CHECKS (Elastic / Service combinations)
+----------------------------------------------------------------
+  Method:
+    Vertical reaction at base  ΣFz = Fz_applied + Soil&Fdn_factor × Wd
+    Moments at base            Mx_bot = Mx + Fy × (Hp + Hf)
+                               My_bot = My + Fx × (Hp + Hf)
+    Eccentricity               ex = My_bot / ΣFz ,  ey = Mx_bot / ΣFz
+    Soil pressure              σ = (ΣFz / Af) × (1 ± 6·ex/Lx ± 6·ey/Ly)
+    Overturning FS             FS_OT = (ΣFz × L/2) / |M_bot|
+    Sliding FS                 FS_SL = (μ × ΣFz) / √(Fx² + Fy²)
+
+`;
+      stabilityData.forEach(s => {
+        report += `  ----- LC ${s.id}  ${s.desc} -----
+    Applied combination factors : ${s.factorStr}
+    ΣFz at base                 = ${s.Fz.toFixed(2)} kN
+    Mx_bot                      = ${s.Mx_bot.toFixed(2)} kN·m
+    My_bot                      = ${s.My_bot.toFixed(2)} kN·m
+    Eccentricity ex             = ${s.ex.toFixed(4)} m
+    Eccentricity ey             = ${s.ey.toFixed(4)} m
+    σ_max                       = ${s.smax.toFixed(1)} kPa   (allowable ${qAll} kPa)  ${s.smax <= qAll ? '→ OK' : '→ NG'}
+    σ_min                       = ${s.smin.toFixed(1)} kPa
+    Horizontal force H          = ${s.H.toFixed(2)} kN
+    FS Overturning              = ${s.FSot > 100 ? '∞' : s.FSot.toFixed(2)}   (req ≥ ${FSotReq})  ${s.FSot >= FSotReq ? '→ OK' : '→ NG'}
+    FS Sliding                  = ${s.FSsl > 100 ? '∞' : s.FSsl.toFixed(2)}   (req ≥ ${FSslReq})  ${s.FSsl >= FSslReq ? '→ OK' : '→ NG'}
+    Overall status              = ${s.ok ? 'SATISFIED' : 'NOT SATISFIED'}
+
+`;
+      });
+
+      report += `----------------------------------------------------------------
+7.0  DESIGN (Ultimate combinations) – Simplified ACI 318
+----------------------------------------------------------------
+  Design moment at face of pedestal (uniform pressure assumption):
+    Projection length  proj = (L − d_pedestal) / 2
+    Mu = q_u × perpendicular_width × proj × (proj / 2)
+    Effective depth d ≈ Hf − cover − bar_dia/2
+    As = Mu / (φ × fy × 0.9 × d)    with φ = 0.90
+
+`;
+      designData.forEach(d => {
+        report += `  ----- LC ${d.id}  ${d.desc} -----
+    Factors                     : ${d.factorStr}
+    ΣFz (factored)              = ${d.Fz.toFixed(2)} kN
+    Mu about Y-axis             = ${d.Mu_x.toFixed(2)} kN·m
+    Mu about X-axis             = ${d.Mu_y.toFixed(2)} kN·m
+    Effective depth d           = ${d.d.toFixed(3)} m
+    As required (Y direction)   = ${d.As_x.toFixed(0)} mm²
+    As required (X direction)   = ${d.As_y.toFixed(0)} mm²
+
+`;
+      });
+
+      report += `  Maximum Mu about Y            = ${maxMuX.toFixed(2)} kN·m
+  Maximum Mu about X            = ${maxMuY.toFixed(2)} kN·m
+  Maximum As required           = ${maxAs.toFixed(0)} mm²
+  Minimum As (0.0018 × b × h)   = ${As_min.toFixed(0)} mm²/m
+
+----------------------------------------------------------------
+8.0  NOTES & LIMITATIONS
+----------------------------------------------------------------
+  • This calculation follows the overall methodology and structure of
+    calculation note AD204-601-G-03378 (modularized piperack foundations).
+  • Soil bearing, overturning (FS ≥ 1.5) and sliding (FS ≥ 1.5) are checked
+    for all elastic combinations.
+  • Flexural reinforcement is calculated by a simplified ACI 318 approach
+    at the face of the pedestal assuming uniform soil pressure.
+  • Punching shear, one-way shear, crack-width and full bar detailing are
+    not included in this prototype and must be completed by the engineer.
+  • Results must always be verified against the project design basis and
+    by a licensed structural engineer.
+
+================================================================
+  END OF SUMMARY CALCULATION NOTE
+================================================================
+`;
+
+      document.getElementById('reportText').textContent = report;
+
+      lastResults = {
+        Lx, Ly, Hf, Hs, dx, dy, Hp, qAll, gs, gc, mu, fy, coverF, fc, FSotReq, FSslReq,
+        W_f, W_p, W_s, W_dead, As_min, maxMuX, maxMuY, maxAs,
+        stabilityData, designData, report, A_f, A_p, A_s
+      };
+    }
+
+    // ===================== DIAGRAMS =====================
+    function drawPlan(Lx, Ly, dx, dy) {
+      const svg = document.getElementById('planSvg');
+      if (!svg) return;
+      const W=300, H=260, m=36;
+      const scale = Math.min((W-2*m)/Lx, (H-2*m)/Ly);
+      const ox=W/2, oy=H/2;
+      const fx=Lx*scale/2, fy=Ly*scale/2, px=dx*scale/2, py=dy*scale/2;
+      svg.innerHTML = `
+        <rect x="${ox-fx}" y="${oy-fy}" width="${Lx*scale}" height="${Ly*scale}" fill="#d0d7de" stroke="#333" stroke-width="2"/>
+        <rect x="${ox-px}" y="${oy-py}" width="${dx*scale}" height="${dy*scale}" fill="#1e5f8a" stroke="#111" stroke-width="2"/>
+        <line x1="${ox}" y1="${oy-fy-8}" x2="${ox}" y2="${oy+fy+8}" stroke="#1e5f8a" stroke-dasharray="4"/>
+        <line x1="${ox-fx-8}" y1="${oy}" x2="${ox+fx+8}" y2="${oy}" stroke="#1e5f8a" stroke-dasharray="4"/>
+        <text x="${ox}" y="${oy+fy+22}" text-anchor="middle" font-size="11">${Lx.toFixed(2)} m</text>
+        <text x="${ox-fx-14}" y="${oy}" text-anchor="middle" font-size="11" transform="rotate(-90 ${ox-fx-14} ${oy})">${Ly.toFixed(2)} m</text>
+        <text x="${ox}" y="16" text-anchor="middle" font-size="11" fill="#1e5f8a">PLAN</text>`;
+    }
+    function drawSection(Lx, Hf, Hp, Hs, dx) {
+      const svg = document.getElementById('sectionSvg');
+      if (!svg) return;
+      const W=300, H=260, m=36;
+      const maxH = Hf + Hp + 0.4;
+      const scale = Math.min((W-2*m)/Lx, (H-2*m)/maxH);
+      const ox=W/2, baseY=H-m;
+      const footW=Lx*scale, footH=Hf*scale, pedW=dx*scale, pedH=Hp*scale, soilH=Hs*scale;
+      svg.innerHTML = `
+        <line x1="${m-8}" y1="${baseY-footH-soilH}" x2="${W-m+8}" y2="${baseY-footH-soilH}" stroke="#8B4513" stroke-width="2" stroke-dasharray="5"/>
+        <text x="${W-m}" y="${baseY-footH-soilH-5}" text-anchor="end" font-size="10" fill="#8B4513">G.L.</text>
+        <rect x="${ox-footW/2}" y="${baseY-footH}" width="${footW}" height="${footH}" fill="#d0d7de" stroke="#333" stroke-width="2"/>
+        <rect x="${ox-pedW/2}" y="${baseY-footH-pedH}" width="${pedW}" height="${pedH}" fill="#1e5f8a" stroke="#111" stroke-width="2"/>
+        <text x="${ox}" y="${baseY+16}" text-anchor="middle" font-size="11">${Lx.toFixed(2)} m</text>
+        <text x="${ox+footW/2+10}" y="${baseY-footH/2}" font-size="10">${Hf.toFixed(2)}m</text>
+        <text x="${ox+pedW/2+10}" y="${baseY-footH-pedH/2}" font-size="10">${Hp.toFixed(2)}m</text>
+        <text x="${ox}" y="16" text-anchor="middle" font-size="11" fill="#1e5f8a">SECTION</text>`;
+    }
+
+    // ===================== PDF =====================
+    function downloadPDF() {
+      if (!lastResults) calculate();
+      const r = lastResults;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      let y = 16;
+
+      function addTitle(txt, size=12) {
+        if (y > 270) { doc.addPage(); y = 16; }
+        doc.setFontSize(size); doc.setFont(undefined, 'bold');
+        doc.text(txt, 14, y); y += size * 0.5 + 2;
+        doc.setFont(undefined, 'normal');
+      }
+      function addLine(txt, size=9) {
+        if (y > 275) { doc.addPage(); y = 16; }
+        doc.setFontSize(size);
+        const lines = doc.splitTextToSize(txt, pageW - 28);
+        doc.text(lines, 14, y);
+        y += lines.length * (size * 0.4) + 1.5;
+      }
+
+      doc.setFontSize(13); doc.setFont(undefined, 'bold');
+      doc.text('CALCULATION NOTE – MODULARIZED PIPERACK FOUNDATION', pageW/2, y, {align:'center'}); y += 6;
+      doc.setFontSize(10); doc.setFont(undefined, 'normal');
+      doc.text('(IN-PLACE ANALYSIS) – Detailed Summary', pageW/2, y, {align:'center'}); y += 5;
+      doc.setFontSize(8); doc.setTextColor(100);
+      doc.text('Methodology reference: AD204-601-G-03378  |  ACI 318 / IBC style', pageW/2, y, {align:'center'});
+      doc.setTextColor(0); y += 8;
+
+      addTitle('1.0 GEOMETRY & MATERIALS');
+      addLine(`Footing: ${r.Lx.toFixed(2)} × ${r.Ly.toFixed(2)} × ${r.Hf.toFixed(2)} m thick`);
+      addLine(`Pedestal: ${(r.dx*1000).toFixed(0)} × ${(r.dy*1000).toFixed(0)} mm × ${r.Hp.toFixed(2)} m high`);
+      addLine(`Soil cover Hs = ${r.Hs.toFixed(2)} m    Allowable bearing = ${r.qAll.toFixed(0)} kPa`);
+      addLine(`f'c = ${r.fc} MPa    fy = ${r.fy} MPa    Cover = ${(r.coverF*1000).toFixed(0)} mm`);
+      y += 3;
+
+      addTitle('2.0 SELF-WEIGHT');
+      addLine(`Wf = ${r.W_f.toFixed(1)} kN    Wp = ${r.W_p.toFixed(1)} kN    Ws = ${r.W_s.toFixed(1)} kN`);
+      addLine(`Total Dead Load Wd = ${r.W_dead.toFixed(1)} kN`);
+      y += 3;
+
+      addTitle('3.0 STABILITY CHECKS (Elastic)');
+      const stabBody = r.stabilityData.map(s => [
+        s.id, s.desc.substring(0,18), s.Fz.toFixed(1), s.ex.toFixed(3), s.ey.toFixed(3),
+        s.smax.toFixed(1), s.smin.toFixed(1),
+        s.FSot>100?'∞':s.FSot.toFixed(2), s.FSsl>100?'∞':s.FSsl.toFixed(2), s.ok?'OK':'NG'
+      ]);
+      doc.autoTable({
+        startY: y,
+        head: [['LC#','Description','ΣFz','ex','ey','σmax','σmin','FS OT','FS SL','Status']],
+        body: stabBody,
+        styles: { fontSize: 7.5, cellPadding: 1.2 },
+        headStyles: { fillColor: [30, 95, 138] },
+        margin: { left: 14, right: 14 }
+      });
+      y = doc.lastAutoTable.finalY + 6;
+
+      addTitle('4.0 DESIGN SUMMARY (Ultimate)');
+      addLine(`Max Mu about Y = ${r.maxMuX.toFixed(1)} kN·m     Max Mu about X = ${r.maxMuY.toFixed(1)} kN·m`);
+      addLine(`Required As (max) = ${r.maxAs.toFixed(0)} mm²     Minimum As = ${r.As_min.toFixed(0)} mm²/m`);
+      y += 4;
+
+      addTitle('5.0 DETAILED CHECKS (selected combinations)');
+      r.stabilityData.slice(0, 4).forEach(s => {
+        addLine(`LC ${s.id} (${s.desc}): ΣFz=${s.Fz.toFixed(1)} kN, σmax=${s.smax.toFixed(1)} kPa, FS_OT=${s.FSot>100?'∞':s.FSot.toFixed(2)}, FS_SL=${s.FSsl>100?'∞':s.FSsl.toFixed(2)} → ${s.ok?'OK':'NG'}`);
+      });
+      y += 4;
+
+      doc.setFontSize(8); doc.setTextColor(100);
+      if (y > 270) { doc.addPage(); y = 16; }
+      doc.text('Educational prototype – Always verify with a licensed structural engineer and project design basis.', 14, y);
+
+      doc.save('Piperack_Foundation_Calculation_Note.pdf');
+    }
+
+    // ===================== EXCEL =====================
+    function downloadExcel() {
+      if (!lastResults) calculate();
+      const r = lastResults;
+      const wb = XLSX.utils.book_new();
+
+      const summary = [
+        ['CALCULATION NOTE – MODULARIZED PIPERACK FOUNDATION'],
+        ['(IN-PLACE ANALYSIS) – Detailed Summary'],
+        ['Reference: AD204-601-G-03378'],
+        [],
+        ['GEOMETRY'],
+        ['Footing Lx (m)', r.Lx], ['Footing Ly (m)', r.Ly], ['Footing thickness Hf (m)', r.Hf],
+        ['Pedestal dx (mm)', r.dx*1000], ['Pedestal dy (mm)', r.dy*1000], ['Pedestal height Hp (m)', r.Hp],
+        ['Soil cover Hs (m)', r.Hs], ['Allowable bearing (kPa)', r.qAll],
+        ['f\'c (MPa)', r.fc], ['fy (MPa)', r.fy],
+        [],
+        ['SELF-WEIGHT (kN)'],
+        ['Footing Wf', r.W_f], ['Pedestal Wp', r.W_p], ['Soil Ws', r.W_s], ['Total Dead Wd', r.W_dead],
+        [],
+        ['DESIGN SUMMARY'],
+        ['Max Mu about Y (kN·m)', r.maxMuX], ['Max Mu about X (kN·m)', r.maxMuY],
+        ['Max As required (mm²)', r.maxAs], ['As minimum (mm²/m)', r.As_min]
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary');
+
+      const stab = [['LC#','Description','ΣFz (kN)','ex (m)','ey (m)','σmax (kPa)','σmin (kPa)','FS OT','FS SL','Status','Factors']];
+      r.stabilityData.forEach(s => stab.push([
+        s.id, s.desc, s.Fz, s.ex, s.ey, s.smax, s.smin,
+        s.FSot>100?'∞':s.FSot, s.FSsl>100?'∞':s.FSsl, s.ok?'OK':'NG', s.factorStr
+      ]));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stab), 'Stability');
+
+      const lc = [['Name','Fx (kN)','Fy (kN)','Fz (kN)','Mx (kN·m)','My (kN·m)']];
+      loadCases.forEach(c => lc.push([c.name, c.Fx, c.Fy, c.Fz, c.Mx, c.My]));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lc), 'Load Cases');
+
+      // Combinations matrix
+      const combHead = ['LC#','Description','Type','Soil&Fdn factor', ...loadCases.map(l => l.name)];
+      const combBody = [combHead];
+      combinations.forEach(c => {
+        const row = [c.id, c.desc, c.type, c.soilFactor, ...c.factors];
+        combBody.push(row);
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(combBody), 'Combinations');
+
+      XLSX.writeFile(wb, 'Piperack_Foundation_Report.xlsx');
+    }
+
+    // ===================== INIT =====================
+    renderLoadCases();
+    renderCombinations();
+    document.querySelectorAll('#geometry input, #geometry select').forEach(el => {
+      el.addEventListener('change', () => {
+        if (document.getElementById('results').classList.contains('active')) calculate();
+      });
+    });
+    calculate();
+  </script>
+</body>
+</html>
